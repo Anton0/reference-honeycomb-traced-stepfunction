@@ -1,0 +1,137 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Sample AWS Step Function app
+
+Globals:
+
+    Function:
+        Runtime: python3.8
+        Timeout: 30
+
+Resources:
+
+    Step1:
+        Type: AWS::Serverless::Function
+        Properties:
+            Description: Step1
+            CodeUri: ../target/reference-honeycomb-traced-stepfunction.zip
+            Handler: hcsfn.lambda_handler
+            Environment:
+                Variables:
+                    honeycomb_api_key: !Sub '{{resolve:secretsmanager:honeycomb_api_key::::}}'
+
+    Step2:
+        Type: AWS::Serverless::Function
+        Properties:
+            Description: Step2
+            CodeUri: ../target/reference-honeycomb-traced-stepfunction.zip
+            Handler: hcsfn.lambda_handler
+            Environment:
+                Variables:
+                    honeycomb_api_key: !Sub '{{resolve:secretsmanager:honeycomb_api_key::::}}'
+
+    Step3:
+        Type: AWS::Serverless::Function
+        Properties:
+            Description: Step3
+            CodeUri: ../target/reference-honeycomb-traced-stepfunction.zip
+            Handler: hcsfn.lambda_handler
+            Environment:
+                Variables:
+                    honeycomb_api_key: !Sub '{{resolve:secretsmanager:honeycomb_api_key::::}}'
+
+    Step4:
+        Type: AWS::Serverless::Function
+        Properties:
+            Description: Step4
+            CodeUri: ../target/reference-honeycomb-traced-stepfunction.zip
+            Handler: hcsfn.lambda_handler
+            Environment:
+                Variables:
+                    honeycomb_api_key: !Sub '{{resolve:secretsmanager:honeycomb_api_key::::}}'
+
+    StatesExecutionRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+            AssumeRolePolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                - Effect: "Allow"
+                  Principal:
+                    Service:
+                      - Fn::Sub: "states.${AWS::Region}.amazonaws.com"
+                  Action: "sts:AssumeRole"
+            Path: "/"
+            Policies:
+                - PolicyName: StatesExecutionPolicy
+                  PolicyDocument:
+                    Version: "2012-10-17"
+                    Statement:
+                      - Effect: Allow
+                        Action:
+                          - "lambda:InvokeFunction"
+                        Resource:
+                          - !Sub ${Step1.Arn}
+                          - !Sub ${Step2.Arn}
+                          - !Sub ${Step3.Arn}
+                          - !Sub ${Step4.Arn}
+
+    ReferenceStepFunction:
+        Type: "AWS::StepFunctions::StateMachine"
+        Properties:
+            RoleArn: !GetAtt StatesExecutionRole.Arn
+            DefinitionString: !Sub |-
+                {
+                    "Comment": "Greeting by Name",
+                    "StartAt": "Step1",
+                    "States": {
+                        "Step1": {
+                            "Type": "Task",
+                            "Parameters": {
+                                "Input.$": "$",
+                                "Path.$": "$$.State.Name",
+                                "start_time.$": "$$.Execution.StartTime"
+                            },
+                            "Resource": "${Step1.Arn}",
+                            "Catch": [
+                                {
+                                    "ErrorEquals": [
+                                        "NameError"
+                                    ],
+                                    "Next": "Step2"
+                                }
+                            ],
+                            "Next": "Step3"
+                        },
+                        "Step2": {
+                            "Type": "Task",
+                            "Parameters": {
+                                "Input.$": "$",
+                                "Path.$": "$$.State.Name",
+                                "start_time.$": "$$.Execution.StartTime"
+                            },
+                            "Resource": "${Step2.Arn}",
+                            "Next": "Step4"
+                        },
+                        "Step3": {
+                            "Type": "Task",
+                            "Parameters": {
+                                "Input.$": "$",
+                                "Path.$": "$$.State.Name",
+                                "start_time.$": "$$.Execution.StartTime"
+                            },
+                            "Resource": "${Step3.Arn}",
+                            "Next": "Step4"
+                        },
+                        "Step4": {
+                            "Type": "Task",
+                            "Parameters": {
+                                "Input.$": "$",
+                                "Path.$": "$$.State.Name",
+                                "start_time.$": "$$.Execution.StartTime"
+                            },
+                            "Resource": "${Step4.Arn}",
+                            "End": true
+                        }
+                    }
+                }

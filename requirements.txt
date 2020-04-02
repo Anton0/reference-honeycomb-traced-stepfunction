@@ -1,0 +1,2 @@
+honeycomb-beeline>=2.5.0
+lambda_decorators
